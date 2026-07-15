@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Maze Solver & Pathfinding Playground</title>
+  <!-- Google Fonts: Outfit and Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- Icons (Lucide Icons via CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo-area">
+        <i data-lucide="compass" class="logo-icon"></i>
+        <h1>PathFinder <span>AI Playground</span></h1>
+      </div>
+      <div class="header-right">
+        <div id="backend-status" class="status-indicator status-offline">
+          <span class="status-dot"></span>
+          <span id="backend-status-text" class="status-text">C++ Backend: Offline</span>
+        </div>
+        <p class="tagline">Compare classic and heuristic search algorithms interactively</p>
+      </div>
+    </header>
+
+    <div class="dashboard">
+      <!-- Left Sidebar: Controls & Generator -->
+      <aside class="control-panel panel">
+        <h2><i data-lucide="sliders"></i> Grid & Terrain</h2>
+        
+        <div class="control-group">
+          <label>Grid Preset</label>
+          <div class="select-wrapper">
+            <select id="grid-size-select">
+              <option value="20x20">Small (20 × 20)</option>
+              <option value="30x15" selected>Medium (30 × 15)</option>
+              <option value="40x20">Large (40 × 20)</option>
+              <option value="60x30">Huge (60 × 30)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>Generate Maze</label>
+          <div class="btn-grid">
+            <button id="btn-gen-classic" class="btn btn-secondary">
+              <i data-lucide="maze"></i> Classic Maze
+            </button>
+            <button id="btn-gen-weighted" class="btn btn-secondary">
+              <i data-lucide="sparkles"></i> Weighted Terrain
+            </button>
+            <button id="btn-gen-random" class="btn btn-secondary">
+              <i data-lucide="shuffle"></i> Random Walls
+            </button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>Terrain Brush Palette</label>
+          <div class="brush-grid">
+            <button class="brush-btn active" data-terrain="water" title="Water / Wall (Weight: Blocked)">
+              <span class="brush-color color-water"></span>
+              <span class="brush-label">Water (Wall)</span>
+              <span class="brush-weight">∞</span>
+            </button>
+            <button class="brush-btn" data-terrain="road" title="Road (Weight: 1)">
+              <span class="brush-color color-road"></span>
+              <span class="brush-label">Road (Flat)</span>
+              <span class="brush-weight">1</span>
+            </button>
+            <button class="brush-btn" data-terrain="grass" title="Grass (Weight: 2)">
+              <span class="brush-color color-grass"></span>
+              <span class="brush-label">Grass (Soft)</span>
+              <span class="brush-weight">2</span>
+            </button>
+            <button class="brush-btn" data-terrain="mud" title="Mud (Weight: 5)">
+              <span class="brush-color color-mud"></span>
+              <span class="brush-label">Mud (Slippery)</span>
+              <span class="brush-weight">5</span>
+            </button>
+            <button class="brush-btn" data-terrain="start" title="Start Point">
+              <span class="brush-color color-start">S</span>
+              <span class="brush-label">Start Point</span>
+            </button>
+            <button class="brush-btn" data-terrain="goal" title="Goal Point">
+              <span class="brush-color color-goal">G</span>
+              <span class="brush-label">Goal Point</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="info-note">
+          <i data-lucide="info"></i>
+          <span>Click & drag on the grid to paint selected terrain. Start/Goal nodes can also be dragged directly!</span>
+        </div>
+      </aside>
+
+      <!-- Center: Canvas Arena -->
+      <main class="canvas-area">
+        <div class="canvas-container">
+          <canvas id="maze-canvas"></canvas>
+        </div>
+
+        <div class="playback-controls panel">
+          <div class="speed-slider-group">
+            <label for="speed-slider">Speed</label>
+            <input type="range" id="speed-slider" min="1" max="100" value="70">
+            <span id="speed-display">70%</span>
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-run" class="btn btn-primary btn-lg">
+              <i data-lucide="play"></i> Run Algorithm
+            </button>
+            <button id="btn-pause" class="btn btn-secondary btn-lg" disabled>
+              <i data-lucide="pause"></i> Pause
+            </button>
+            <button id="btn-reset" class="btn btn-secondary btn-lg">
+              <i data-lucide="rotate-ccw"></i> Reset Grid
+            </button>
+            <button id="btn-compare" class="btn btn-accent btn-lg">
+              <i data-lucide="bar-chart-2"></i> Compare All
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right Sidebar: Algorithms & Live Stats -->
+      <aside class="algo-panel panel">
+        <h2><i data-lucide="git-branch"></i> Search Algorithm</h2>
+        
+        <div class="algo-selector">
+          <label class="algo-option">
+            <input type="radio" name="algorithm" value="bfs" checked>
+            <div class="algo-card">
+              <div class="algo-name">BFS (Breadth First)</div>
+              <div class="algo-meta">Unweighted • Guarantees shortest hop count</div>
+            </div>
+          </label>
+
+          <label class="algo-option">
+            <input type="radio" name="algorithm" value="dfs">
+            <div class="algo-card">
+              <div class="algo-name">DFS (Depth First)</div>
+              <div class="algo-meta">Unweighted • Follows deep paths, suboptimal</div>
+            </div>
+          </label>
+
+          <label class="algo-option">
+            <input type="radio" name="algorithm" value="dijkstra">
+            <div class="algo-card">
+              <div class="algo-name">Dijkstra</div>
+              <div class="algo-meta">Weighted • Guarantees lowest cost path</div>
+            </div>
+          </label>
+
+          <label class="algo-option">
+            <input type="radio" name="algorithm" value="greedy">
+            <div class="algo-card">
+              <div class="algo-name">Greedy Best-First</div>
+              <div class="algo-meta">Weighted • Heuristic-driven (fast, suboptimal)</div>
+            </div>
+          </label>
+
+          <label class="algo-option">
+            <input type="radio" name="algorithm" value="astar">
+            <div class="algo-card">
+              <div class="algo-name">A* Search</div>
+              <div class="algo-meta">Weighted • Optimal path using g(n) + h(n)</div>
+            </div>
+          </label>
+        </div>
+
+        <h2 class="stats-title"><i data-lucide="activity"></i> Run Statistics</h2>
+        <div class="live-stats">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-expanded">-</div>
+            <div class="stat-label">Nodes Expanded</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-time">-</div>
+            <div class="stat-label">Execution Time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-length">-</div>
+            <div class="stat-label">Path Length</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-cost">-</div>
+            <div class="stat-label">Total Cost</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Comparison Overlay Modal -->
+  <div class="modal-overlay" id="compare-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i data-lucide="trending-up"></i> Algorithm Performance Comparison</h2>
+        <button class="btn-close" id="btn-close-modal"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Status</th>
+                <th>Path Cost</th>
+                <th>Path Length</th>
+                <th>Nodes Expanded</th>
+                <th>Time</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="compare-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-note">
+          <i data-lucide="info"></i>
+          <span>Click <strong>"Visualize Path"</strong> in any row to highlight that algorithm's shortest path on the main canvas grid.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript modules -->
+  <script type="module" src="script.js"></script>
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>
